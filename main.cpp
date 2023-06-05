@@ -7,7 +7,7 @@
 #include <random>
 #include <chrono>
 #include <future>
-#include <limits>
+#include <climits>
 
 using namespace std;
 using namespace chrono;
@@ -33,7 +33,7 @@ public:
                     auto start = high_resolution_clock::now();
                     task();
                     auto end = high_resolution_clock::now();
-                    auto duration = duration_cast<milliseconds>(end - start);
+                    auto duration = duration_cast<nanoseconds>(end - start);
 
                     {
                         lock_guard<mutex> timeLock(timeMutex);
@@ -108,10 +108,6 @@ int main() {
 
     cout << "Enter the number of tasks to execute: ";
     cin >> numTasks;
-
-    cout << "Enter the queue limit (0 for unlimited): ";
-    cin >> queueLimit;
-
     ThreadPool threadPool(numThreads);
 
     random_device rd;
@@ -119,7 +115,7 @@ int main() {
     uniform_int_distribution<int> distribution(5, 10);
 
     int maxTimeToFillQueue = 0;
-    int minTimeToFillQueue = numeric_limits<int>::max();
+    int minTimeToFillQueue = INT_MAX; // Using INT_MAX instead of numeric_limits<int>::max()
     int rejectedTasks = 0;
 
     auto start = high_resolution_clock::now();
@@ -131,21 +127,18 @@ int main() {
             rejectedTasks++;
         } else {
             if (i % 3 == 0) {
-
                 threadPool.enqueue([i, sleepTime]() {
                     this_thread::sleep_for(seconds(sleepTime));
-                    int result = 5 * 4;  // Replace with your actual multiplication operation
+                    int result = 5 * 4;
                     cout << "Multiplication Task " << i << " completed. Result: " << result << endl;
                 });
             } else if (i % 3 == 1) {
-
                 threadPool.enqueue([i, sleepTime]() {
                     this_thread::sleep_for(seconds(sleepTime));
-                    int result = 10 - 2;  // Replace with your actual subtraction operation
+                    int result = 10 - 2;
                     cout << "Subtraction Task " << i << " completed. Result: " << result << endl;
                 });
             } else {
-                // Division task
                 threadPool.enqueue([i, sleepTime]() {
                     this_thread::sleep_for(seconds(sleepTime));
                     double result = 20.0 / 5;
@@ -154,7 +147,7 @@ int main() {
             }
         }
 
-        if (threadPool.getAverageQueueLength() > 0 && minTimeToFillQueue == numeric_limits<int>::max()) {
+        if (threadPool.getAverageQueueLength() > 0 && minTimeToFillQueue == INT_MAX) {
             int timeToFillQueue = static_cast<int>(duration_cast<seconds>(high_resolution_clock::now() - start).count());
             maxTimeToFillQueue = max(maxTimeToFillQueue, timeToFillQueue);
             minTimeToFillQueue = min(minTimeToFillQueue, timeToFillQueue);
@@ -163,18 +156,17 @@ int main() {
 
     this_thread::sleep_for(seconds(1));
 
-    auto end = high_resolution_clock::now();
-    auto duration = duration_cast<seconds>(end - start);
+    auto stop = high_resolution_clock::now();
+    auto duration = duration_cast<nanoseconds>(stop - start);
     double averageWaitingTime = threadPool.getAverageWaitingTime();
     double averageQueueLength = threadPool.getAverageQueueLength();
 
-    cout << "Statistics:" << endl;
     cout << "Number of threads created: " << numThreads << endl;
-    cout << "Average time a thread is in the waiting state: " << averageWaitingTime << " ms" << endl;
+    cout << "Is in the waiting state: " << averageWaitingTime << " ms" << endl;
     cout << "Maximum time until the queue was filled: " << maxTimeToFillQueue << " s" << endl;
-    cout << "Minimum time until the queue was filled: " << (minTimeToFillQueue == numeric_limits<int>::max() ? 0 : minTimeToFillQueue) << " s" << endl;
+    cout << "Minimum time until the queue was filled: " << minTimeToFillQueue  << " s" << endl;
     cout << "Number of rejected tasks: " << rejectedTasks << endl;
-    cout << "Average task execution time: " << duration.count() / static_cast<double>(numTasks) << " s" << endl;
+    cout << "Average task execution time: " << duration.count() * 1e-9 << " s" << endl;
     cout << "Average queue length: " << averageQueueLength << endl;
 
     threadPool.stopPool();
